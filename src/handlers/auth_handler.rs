@@ -15,52 +15,49 @@ use crate::handlers::oauth_handler::oauth_handler;
 
 const MESSAGE: &str = "OK";
 
-#[get("/healthchecker")]
+#[get("/health")]
 async fn health_checker_handler() -> impl Responder {
     HttpResponse::Ok().json(serde_json::json!({"status": "success", "message": MESSAGE}))
 }
+
 #[post("/auth/register")]
 async fn register_user_handler(
     body: web::Json<RegisterUserSchema>,
     data: web::Data<AppState>,
 ) -> impl Responder {
-    match data.db.lock() {
-        Err(_) => HttpResponse::InternalServerError()
-            .json(serde_json::json!({"status": "error", "message": "Database error"})),
-        Ok(mut vec) => {
-            if vec.iter().any(|user| user.email == body.email) {
-                return HttpResponse::Conflict()
-                    .json(serde_json::json!({"status": "fail", "message": "Email already exist"}));
-            }
+    let mut vec = data.db.lock().await;
 
-            let uuid_id = Uuid::new_v4();
-            let datetime = Utc::now();
-
-            let user = User {
-                id: Some(uuid_id.to_string()),
-                name: body.name.to_owned(),
-                verified: false,
-                email: body.email.to_owned().to_lowercase(),
-                provider: "local".to_string(),
-                role: "user".to_string(),
-                password: body.password.to_string(),
-                photo: "default.png".to_string(),
-                createdAt: Some(datetime),
-                updatedAt: Some(datetime),
-            };
-
-            vec.push(user.clone());
-
-            let json_response = UserResponse {
-                status: "success".to_string(),
-                data: UserData {
-                    user: user_to_response(&user),
-                },
-            };
-
-            HttpResponse::Ok().json(json_response)
-        }
+    if vec.iter().any(|user| user.email == body.email) {
+        return HttpResponse::Conflict()
+            .json(serde_json::json!({"status": "fail", "message": "Email already exist"}));
     }
+
+    let uuid_id = Uuid::new_v4();
+    let datetime = Utc::now();
+
+    let user = User {
+        id: Some(uuid_id.to_string()),
+        name: body.name.to_owned(),
+        verified: false,
+        email: body.email.to_owned().to_lowercase(),
+        provider: "local".to_string(),
+        role: "user".to_string(),
+        password: body.password.to_string(),
+        photo: "default.png".to_string(),
+        createdAt: Some(datetime),
+        updatedAt: Some(datetime),
+    };
+
+    vec.push(user.clone());
+
+    let json_response = UserResponse {
+        status: "success".to_string(),
+        data: UserData {
+            user: user_to_response(&user),
+        },
+    };
+
+    HttpResponse::Ok().json(json_response)
 }
 
 #[post("/auth/login")]
@@ -68,7 +65,7 @@ async fn login_user_handler(
     body: web::Json<LoginUserSchema>,
     data: web::Data<AppState>,
 ) -> impl Responder {
-    let vec = data.db.lock().unwrap();
+    let vec = data.db.lock().await;
     let user_opt = vec
         .iter()
         .find(|user| user.email == body.email.to_lowercase());
@@ -138,7 +135,7 @@ async fn get_me_handler(
     auth_guard: AuthenticationGuard,
     data: web::Data<AppState>,
 ) -> impl Responder {
-    let vec = data.db.lock().unwrap();
+    let vec = data.db.lock().await;
 
     let user = vec
         .iter()

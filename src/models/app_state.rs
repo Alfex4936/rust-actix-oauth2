@@ -1,6 +1,7 @@
 use crate::config::env::Config;
 use crate::models::user::User;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
+use tokio::sync::Mutex;
 
 pub struct AppState {
     pub db: Arc<Mutex<Vec<User>>>,

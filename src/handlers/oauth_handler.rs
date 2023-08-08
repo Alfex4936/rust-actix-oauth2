@@ -1,4 +1,4 @@
-use std::error::Error;
+use std::{error::Error, str::FromStr};
 
 use crate::{
     auth::github_oauth::{get_github_oauth_token, get_github_user},
@@ -34,6 +34,21 @@ enum OAuthProvider {
     GitHub,
     Naver,
     Kakao,
+}
+
+// Enum to String Mapping
+impl FromStr for OAuthProvider {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "google" => Ok(OAuthProvider::Google),
+            "github" => Ok(OAuthProvider::GitHub),
+            "kakao" => Ok(OAuthProvider::Kakao),
+            "naver" => Ok(OAuthProvider::Naver),
+            _ => Err(()),
+        }
+    }
 }
 
 fn update_user(user: &mut User, user_info: &UserInfo) {
@@ -135,22 +150,19 @@ async fn fetch_user_info(
 
 #[get("/sessions/oauth/{provider}")]
 async fn oauth_handler(
-    path: web::Path<(String,)>,
+    path: web::Path<String>,
     query: web::Query<QueryCode>,
     data: web::Data<AppState>,
 ) -> ActixResult<impl Responder> {
-    let provider = match path.into_inner().0.as_str() {
-        "google" => OAuthProvider::Google,
-        "github" => OAuthProvider::GitHub,
-        "kakao" => OAuthProvider::Kakao,
-        "naver" => OAuthProvider::Naver,
-        _ => return Ok(HttpResponse::BadRequest().finish()),
-    };
+    let provider: OAuthProvider = path
+        .into_inner()
+        .parse()
+        .map_err(|_| ErrorBadRequest("Bad request provider here"))?;
 
     let code = &query.code;
     let state = &query.state;
 
-    if code.is_empty() {
+    if code.trim().is_empty() {
         return Err(ErrorBadRequest("Authorization code not provided!"));
     }
 
@@ -192,13 +204,7 @@ async fn oauth_handler(
         }
     };
 
-    let mut vec = match data.db.lock() {
-        Ok(v) => v,
-        Err(_) => {
-            return Ok(HttpResponse::InternalServerError()
-                .json(serde_json::json!({"status": "error", "message": "Database error"})))
-        }
-    };
+    let mut vec = data.db.lock().await;
 
     let user_id = find_or_create_user(user_info, &mut vec).await;
 
@@ -217,8 +223,12 @@ async fn oauth_handler(
     };
 
     let cookie = Cookie::build("token", token)
+        .domain("localhost")
+        .same_site(actix_web::cookie::SameSite::Lax) // Secure, Lax, None
+        .secure(true) // Make sure the cookie is secure, https
         .path("/")
-        .max_age(ActixWebDuration::new(60 * data.env.jwt_max_age, 0))
+        .max_age(ActixWebDuration::new(60, 0))
+        // .max_age(ActixWebDuration::new(60 * data.env.jwt_max_age, 0))
         .http_only(true)
         .finish();
 

@@ -2,6 +2,8 @@
 
 <img src="https://img1.daumcdn.net/thumb/R1280x0/?scode=mtistory2&fname=https%3A%2F%2Fblog.kakaocdn.net%2Fdn%2Fbo7ZvX%2Fbtsp64YhCDP%2Fndp7pA0pKA2WkiNpH9yAL0%2Fimg.png" width="300" height="340">
 
+![demo](https://github.com/Alfex4936/rust-actix-oauth2/assets/2356749/81ac3ea2-f934-4da6-a01d-4b729e147c1f)
+
 
 This project serves as a demo for implementing OAuth2 login functionality using multiple providers like Kakao, Naver, Google, and GitHub. Along with OAuth authentication, it also demonstrates how to create users in the database after successful authentication.
 
@@ -67,14 +69,47 @@ src/
 
 ## 🌱 Setup
 
-1. **Clone the Repository**:
+1. **Install mkcert**:
+
+   First, you need to install `mkcert` for creating a local certificate for HTTPS development.
+
+   **On Windows** (using [Chocolatey](https://chocolatey.org/)):
+
+   ```bash
+   choco install mkcert
+   ```
+
+   **On Linux**:
+
+   ```bash
+   sudo apt install libnss3-tools
+   wget -O mkcert https://github.com/FiloSottile/mkcert/releases/download/v1.4.0/mkcert-v1.4.0-linux-amd64
+   chmod +x mkcert
+   sudo mv mkcert /usr/local/bin/
+   ```
+
+   Next, install the local CA:
+
+   ```bash
+   mkcert -install
+   ```
+
+   Finally, create a certificate for `localhost`:
+
+   ```bash
+   mkcert localhost
+   ```
+
+   This will generate two files: `localhost.pem` (the certificate) and `localhost-key.pem` (the private key). Remember the location of these files as you might need to reference them in your application for HTTPS.
+
+2. **Clone the Repository**:
 
    ```bash
    git clone https://github.com/Alfex4936/rust-actix-oauth2.git
    cd rust-actix-oauth2
    ```
 
-2. **Setup Environment Variables**:
+3. **Setup Environment Variables**:
 
    Copy the sample `.env` content and set the appropriate values for your OAuth application:
 
@@ -85,7 +120,7 @@ src/
    # Fill other values accordingly.
    ```
 
-3. **Run the Application**:
+4. **Run the Application**:
 
    ```bash
    cargo install cargo-watch
@@ -93,7 +128,11 @@ src/
    cargo watch -q -c -w src/ -x run
    ```
 
-   Hosted at `http://localhost:8080`.
+   Hosted at `https://localhost:8080`. (**Not on `http://`**)
+
+---
+
+**Note**: Ensure that your application is configured to use the generated `localhost.pem` and `localhost-key.pem` files when serving via HTTPS. This can often be done in the web framework's settings or configuration.
 
 ## 🔍 Example: Naver OAuth2
 
