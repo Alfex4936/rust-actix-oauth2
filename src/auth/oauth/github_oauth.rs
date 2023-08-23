@@ -10,8 +10,8 @@ use super::BasicOauthToken;
 #[derive(Deserialize)]
 pub struct GitHubUserResult {
     pub login: String,
-    pub avatar_url: String,
-    pub email: String,
+    pub avatar_url: Option<String>,
+    pub email: Option<String>,
 }
 
 pub async fn get_github_oauth_token(
